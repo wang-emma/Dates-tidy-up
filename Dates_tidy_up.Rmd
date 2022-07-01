@@ -428,5 +428,3 @@ dates_new.df %>%
 ```
 
 We observed highest frequencies between May to Aug.  
-
-############# Should I remove NA?????
