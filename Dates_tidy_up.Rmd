@@ -1,0 +1,432 @@
+---
+title: "STATS 779 Assignment 3"
+author: "Emma Wang"
+date: "31/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Question 1
+Write a function that flags invalid or ambiguous dates, eg 6 ju 2012 or 31 Sept 1950.  
+Write a description of how the function works, and also comments in the code.  
+Show a couple of illustrations of the function working.  
+
+```{r}
+pacman::p_load(tidyverse, ggplot2)
+# A helper function
+`%notin%` <- negate(`%in%`)
+```
+  
+The function `check_date()` accepts input of date (character strings) of the format of `day month year`.  
+It then scans and reports for invalid or ambitious input for individual `Day`, `Month` and `Year` elements. Finally, it checks the date as a whole and reports any invalid dates.  
+The output is a list of errors detected in the given date. If the returned list is empty, the date is valid and unambitious.      
+  
+**Detailed explanation of the function**:    
+To analyse individual elements, the date is split into 3 components using `strsplit()`. Each part is saved as `Day`, `Month` and `Year`.  
+  
+For `Year`, this function checks for any invalid character strings input. If this happens, the error is recorded as `Invalid character string input for Year.`  
+If `Year` is recorded numbers, it is changed to numeric format. In this case, there are a list of possible errors:  
+* If `Year` is not an integer, the error returned is `Invalid numeric input of Year. Need an integer.`;  
+* If `Year` is 4-digit number that is out of the range of 1910-2022, the error returned is `"Invalid 4-digit Year input out of the range 1910-2022.`;  
+* If `Year` is 1-digit or 2-digit number smaller or equal to 22, the year is ambitious. The error returned is `Ambitious 1-digit or 2-digit input for Year. Require input between 23 to 99.`.  
+
+At the end, the valid 4-digit year is kept. The valid 2-digit year (23-99, inclusively) is changed to 4-digit year.  
+  
+  
+For `Month`, the function firstly check if the input is a proper number. if so, it is converted to numeric format. If the numeric month is non-integer, or out of the range 1-12, the error returned is `Invalid numeric input of Month. Need an integer between 1 to 12, inclusively.`  
+  
+It can also recognize any character input of `Month`, in terms of the 2-letter abbreviations, 3-letter abbreviations and full names. The 3-letter abbreviations and full names are found in `month.name` and `month.abb` vectors in base R.  
+The 2-letter abbreviations used here (`month_2`) are the guidelines published by [EventGuide - Two Digit Month Codes](https://eventguide.com/topics/two_digit_month_abbreviations.html). This version avoids confusion as much as possible. For example, under this guidelines `Ju` is an ambitious between `July` and `June`.  
+If the name of `Month` is in one of the three vectors above, it are valid. It is changed to a numeric format.  
+For any character inputs excluded by the three vectors, they are marked as invalid or ambitious. The error returned is `Invalid or ambitious character input for Month.` For example, `ju` and `ma` are excluded due to the confusion they have caused.  
+  
+For `Day`, any character inputs are flagged as errors. The message returned is `Invalid character string input for Day.`  
+As for numeric input of `Day`, any non-integer, or a number < 1 or > 31 is reported as `Invalid numeric input of Day. Need an integer between 1 to 31, inclusively.`  
+  
+If no error was found by checking the individual components (empty list of errors), the function proceeds to checking the validity of the date as a whole. There are a list of possible errors:  
+* There are only 30 days in April, June, September, and November. If the `Day` component is greater than 30, the date is invalid. The error shown is `The date is invalid. There are only 30 days in April, June, September, and November.`  
+* For a leap year (pre-calculated between 1910 to 2022), there are 29 days in February. If the `Day` component is greater than 29, the date is invalid. The error shown is `The date is invalid. In a leap year, there are only 29 days in Feb.`  
+* For a common year, there are only 28 days in February. If the `Day` component is greater than 28, the date is invalid. The error shown is `The date is invalid. In a common year, there are only 28 days in Feb.`  
+
+At the end, the list of all the errors are returned. An empty list indicates valid and unambitious date input.  
+
+```{r, warning=FALSE}
+check_date <- function(dates){
+  # Split the date into day, month and year
+  date <- unlist(strsplit(dates, " "))
+  Day <- date[1]
+  Month <- date[2]
+  Year <- date[3]
+  
+  # A list to record errors
+  error_list <- list()
+  
+  # Year 
+  # Report if year cannot be changed to numeric format
+  if(is.na(as.numeric(Year))){
+    error_list <- c(error_list, "Invalid character string input for Year.")
+  }else{
+    Year <- as.numeric(Year)
+    
+    # Check that year was an integer
+    if(Year %% 1 != 0){
+      error_list <- c(error_list, "Invalid numeric input of Year. Need an integer.")}
+    
+    # Check 4-digit years: if they were between 1910-2022
+    if(nchar(Year) == 4 && Year < 1910 | Year > 2022){
+      error_list <- c(error_list, "Invalid 4-digit Year input out of the range 1910-2022.")}
+    
+    # Year is ambitious if it was recorded with 1 digit (from 0 to 9), or 2-digit number between 10 to 22
+    if(Year >= 23 & Year <= 99){
+      # If year was a valid 2-digit input, change it to 4-digit format
+      Year <- as.numeric(paste0(19, Year))
+      }else if (Year <= 22) {
+      error_list <- c(error_list, "Ambitious 1-digit or 2-digit input for Year. Require input between 23 to 99.")}
+    }
+  
+  
+
+#################################################################################################################
+
+  # Month
+  # Define the list of 2-letter abbreviations of Month
+  month_2 <- c("Ja","Fe", "Mr", "Ap", "My", "Jn", "Jl", "Au", "Se", "Oc", "Nv", "De")
+  
+  # Check if the month was in numeric format. If so, turn it to numeric value; otherwise, check it has proper character input
+  if(!is.na(as.numeric(Month))){
+    # If Month was a proper number, turn it to a numeric element
+    Month <- as.numeric(Month)
+    
+    # Check month input was an integer between 1 to 12
+    if(Month %% 1 != 0 | Month < 1 | Month > 12){
+      error_list <- c(error_list, "Invalid numeric input of Month. Need an integer between 1 to 12, inclusively.")}
+    
+  }else{
+    Month <- str_to_sentence(Month)
+    # Report errors if months were not recorded in full names, 2-letter or 3-letter abbreviations
+    if(Month %notin% c(month_2, month.name, month.abb)){
+      error_list <- c(error_list, "Invalid or ambitious character input for Month.")
+    }else{
+        # Change character input into numeric
+      ind <- grep(paste0("^", Month, "$"), c(month_2, month.name, month.abb))
+      # Obtain numeric month
+      Month <- ind[1] %% 12
+      }
+  }
+
+
+#################################################################################################################
+
+  # Day
+  # Check if the month was in numeric format. If so, turn it to numeric value; otherwise, check it has proper character input
+  if(!is.na(as.numeric(Day))){
+    Day <- as.numeric(Day)
+    
+    # Check day input was an integer between 1 to 31
+    if(Day %% 1 != 0 | Day < 1 | Day > 31){
+      error_list <- c(error_list, "Invalid numeric input of Day. Need an integer between 1 to 31, inclusively.")}
+    
+  }else{
+    error_list <- c(error_list, "Invalid character string input for Day.")
+  }
+
+
+#################################################################################################################
+
+# Validity of the date as a whole
+  # Leap years between 1910 to 2022
+  leapYear <- seq(1912, 2022, by = 4)
+  
+  
+  # If no errors detected for individual Year/Month/Day, check the validity of the date as a whole
+  if (length(error_list) == 0){
+    # Check the days in a month
+    
+    ## There are only 30 days in April, June, September, and November 
+    if(Month %in% c(4, 6, 9, 11) & Day == 31) {
+      error_list <- c(error_list, "The date is invalid. There are only 30 days in April, June, September, and November.")
+    }else if(Month == 2 & Year %in% leapYear & Day > 29){
+      # If it is Feb in a leap year, there are 29 days
+      error_list <- c(error_list, "The date is invalid. In a leap year, there are only 29 days in Feb.")
+    }else if(Month == 2 & Year %notin% leapYear & Day > 28){
+      # If it is Feb in a common year, there are 28 days
+      error_list <- c(error_list, "The date is invalid. In a common year, there are only 28 days in Feb.")}
+  }
+  # Return the list of errors detected in the date input. If the list is empty, the date is valid and unambitious.  
+    return(error_list)
+}
+
+```
+
+### Test
+```{r, warning=FALSE}
+# A leap year with 29 days in Feb. No error expected
+check_date("29 FEB 1912")
+
+# Invalid character input for all 3 elements, expect 3 errors
+check_date("month month month")
+
+# Ambitious month
+check_date("31 Ju 2021")
+
+# Invalid date
+check_date("31 009 2011")
+```
+  
+
+# Question 2
+The function `return_date()` receives the input of date as a line in data frame, which has 3 variables `Day`, `Month` and `Year`. The purpose is to accommodate the df input in Question 3. It will fix issues with swapped sequences between 3 date components, minor mis-spelling.  
+If the date is valid and ambitious (as checked by `check_date()` function), the date is converted to the format of `dd Mmm yyyy` and returned. For example, `12 Sep 2000`. If the date is invalid or ambitious, an `NA` is returned.   
+
+
+**Detailed explanation of the function**:    
+The first thing to do is to split the function into 3 date components. If there are more than 3 elements, the function reports an error `Need to input date as a data frame with 3 variables: Day, Month and Year.`  
+
+The next part is to check if the input of 3 components are swapped. It can test and fix the following things:  
+* Only `Month` accepts character strings input. If there is character input in `Day`, we swap `Day` and `Month`.  
+* If there is character input in `Year`, we swap `Year` and `Month`.  
+* Only `Year` accepts 4-digit numeric input. If `Day` has 4-digit number, we swap `Day` and `Year`.  
+* If `Month` has 4-digit number, we swap `Month` and `Year`.  
+* Sometimes 2-digit `Day` and 2-digit `Year` are swapped. The function checks if `Day` is greater than 31 while `Year` is smaller than 31. If so, we swap them.  
+* Sometimes numeric `Day` and numeric `Month` are swapped. The function checks if `Month` is greater than 12 while `Day` is a number from 1 to 12. If so, we swap them.  
+  
+Next, the function detects mis-spelling in `Month` and fix them. The common mistakes were found in the `Dates.df` to be used in Question 3.  
+
+After that, we use `check_dates()` to see if the date is valid and unambitious. If so, the date is converted to the right format for output. Otherwise, an `NA` is returned.  
+
+```{r}
+return_date <- function(line){
+  # Turn the input into a character vector
+    date <- unlist(line)
+    # Remove the names
+    date <- unname(date)
+    # Report error if there are more than 3 elements
+    if (length(date) != 3){
+      stop("Need to input date as a data frame with 3 variables: Day, Month and Year.")
+    }
+    
+    # Extract components
+    Day <- date[1]
+    Month <- date[2]
+    Year <- date[3]
+  
+#################################################################################################################
+ 
+     # 2-letter abbreviation of Month
+    month_2 <- c("Ja","Fe", "Mr", "Ap", "My", "Jn", "Jl", "Au", "Se", "Oc", "Nv", "De")
+  
+  
+    # Check that each component is in the right place
+    ## If there are characters in Day, it is possible that the letters actually represent Month
+  
+    # If year and month are swapped, change the sequence back
+    if (is.na(as.numeric(Year))){
+      if(str_to_sentence(Year) %in% c(month_2, month.name, month.abb)){
+        temp <- Year
+        Year <- Month
+        Month <- temp
+        }
+      }
+  
+    # If day and month are swapped, change the sequence back
+    if (is.na(as.numeric(Day))){
+      temp <- Day
+      Day <- Month
+      Month <- temp
+      }
+  
+    # Check if Year and Day are swapped
+    ## If Day is a 4-digit number, it is likely to be Year
+    if (nchar(Day)==4){
+      temp <- Day
+      Day <- Year
+      Year <- temp
+      }
+  
+    ## If Day is a 2-digit number greater than 31, and Year is a 1 or 2 digit number smaller than 31, we will swap them
+    if (nchar(Day)==2 && as.numeric(Day) > 31 && nchar(Year) %in% c(1,2) && as.numeric(Year) <=31){
+      temp <- Day
+      Day <- Year
+      Year <- temp
+      }
+  
+    ## If Month is a 4-digit numeric input, it is likely to be Year
+    if (!is.na(as.numeric(Month)) && nchar(Month)==4){
+      temp <- Month
+      Month <- Year
+      Year <- temp
+      }
+  
+    ## If Month is a 2-digit numeric input greater than 12 and smaller or equal to 31, it is likely to be Day instead. If Day is a number between 1 to 12, we can swap them
+    if (!is.na(as.numeric(Month)) && as.numeric(Month) > 12 && !is.na(as.numeric(Day)) && as.numeric(Day) %in% 1:12){
+      temp <- Month
+      Month <- Day
+      Day <- temp
+      }
+#################################################################################################################
+
+  
+    # Fix minor spelling errors
+    ## Feb
+    if(grepl("^Fe", str_to_sentence(Month))){
+      Month <- "Feb"
+      }
+  
+    ## April
+    if(grepl("^A.?ril$", str_to_sentence(Month))){
+      Month <- "Apr"
+      }
+  
+    ## August
+    if(grepl("^Ag", str_to_sentence(Month))){
+      Month <- "Aug"
+      }
+  
+    ## September
+    if(grepl("^Sept", str_to_sentence(Month))){
+      Month <- "Sep"
+      }
+  
+    ## October
+    if(grepl("^[Oct|Otc]", str_to_sentence(Month))){
+      Month <- "Oct"
+      }
+  
+    ## December
+    if(grepl("^Dec", str_to_sentence(Month))){
+      Month <- "Dec"
+      }
+#################################################################################################################
+ 
+    # Format the date
+    date_format <- paste(Day, Month, Year)
+    error_list <- check_date(date_format)
+    
+    if(length(error_list) == 0){
+
+      # Turn Day into numeric format to remove unwanted zeros
+      Day <- as.numeric(Day)
+    
+      ## Turn Month to 3-letter abbreviation
+      
+      # Check if the month was in numeric format. If so, turn it to numeric value
+      if(!is.na(as.numeric(Month))){
+        # If Month was a proper number, turn it to a 3-letter abbreviation
+        Month <- month.abb[as.numeric(Month)]
+        }else{
+          # If month is recorded in characters, convert it to 3-letter abbreviation
+        
+          # Change character input into numeric at first
+          ## Capitalize first letter
+          Month <- str_to_sentence(Month)
+          ind <- grep(paste0("^", Month, "$"), c(month_2, month.name, month.abb))
+          # Index of month
+          Month <- ind[1] %% 12
+          # Fix month 12
+          if (Month == 0){
+            Month <- 12
+            }
+          
+          # Obtain the 3-letter abbreviation
+          Month <- month.abb[Month]
+          }
+    
+      # Turn 2-digit year into 4 digit
+      if(Year >= 23 & Year <= 99){
+        Year <- as.numeric(paste0(19, Year))}
+    
+      # Paste date together
+      date_format <- paste(Day, Month, Year)
+      return(date_format)
+      }else{
+        return(NA)
+      }
+    }
+```
+
+  
+Here are examples for what can be achieved by the function `return_date()`:  
+```{r, warning = F}
+# Would report error if the input is invalid
+# return_date(data.frame(Day = "MAY", Month = "60", Year = "9", Me = "1"))
+
+# Test on ambitious dates: return NA
+return_date(data.frame(Day = "18", Month = "ju", Year = "1991"))
+
+# Test on invalid dates: return NA
+return_date(data.frame(Day = "0s1", Month = "Sep", Year = "1991"))
+return_date(data.frame(Day = "38", Month = "JAN", Year = "1928"))
+
+# Test on valid dates
+return_date(data.frame(Day = "001", Month = "FEBRUARY", Year = "1991"))
+return_date(data.frame(Day = "000000018", Month = "jAn", Year = "91"))
+return_date(data.frame(Day = "31", Month = "012", Year = "88"))
+
+
+# Test on swapped sequences between 3 elements
+## Swapped Month and Day
+return_date(data.frame(Day = "FEBRUARY", Month = "01", Year = "1991"))
+## Swapped Day, Month and Year
+return_date(data.frame(Day = "1996", Month = "01", Year = "FEB"))
+return_date(data.frame(Day = "MAY", Month = "60", Year = "9"))
+```
+
+
+# Question 3
+```{r}
+# Import data
+Dates.df <- read.csv("Dates.csv", header = TRUE)
+head(Dates.df)
+```
+  
+
+```{r, warning=F}
+dates <- numeric(nrow(Dates.df))
+for (i in 1:length(dates)){
+  dates[i] <- return_date(Dates.df[i,])
+}
+
+# # Combine the data and check the output
+# new <- cbind(Dates.df, dates)
+
+# Save the output as a csv format
+write.table(dates, "Dates_output.csv")
+```
+  
+
+
+
+### Question 4
+Using the corrected dates, use ggplot to make a barplot of the frequency of each
+month. The axes should be readable.  
+```{r}
+dates_new.df <- dates %>% 
+  # Split into 3 components
+  strsplit(" ") %>%
+  # Convert to data frame
+  do.call(rbind.data.frame, .)
+
+# Change the names
+colnames(dates_new.df) <- c("Day", "Month", "Year")
+
+# Count the number of each month
+dates_new.df %>%
+  # Turn month into a factor
+  transform(Month = factor(Month, levels = month.abb)) %>%
+  # Plot
+  ggplot() +
+  geom_bar(aes(x = Month), stat = "count") +
+  geom_hline(yintercept = 0) + # Add horizontal line at y=0
+  theme(panel.grid.minor.y = element_blank(), # remove minor horizontal guidelines
+        panel.grid.major.x = element_blank())+ # remove vertical guidelines
+        labs(y = "Frequency", title = "Frequencies of Month in the formatted dates")
+```
+
+We observed highest frequencies between May to Aug.  
+
+############# Should I remove NA?????
