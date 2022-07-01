@@ -11,10 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 
-# Question 1
-Write a function that flags invalid or ambiguous dates, eg 6 ju 2012 or 31 Sept 1950.  
-Write a description of how the function works, and also comments in the code.  
-Show a couple of illustrations of the function working.  
+# The function that marks wrong or ambitious dates
 
 ```{r}
 pacman::p_load(tidyverse, ggplot2)
@@ -179,7 +176,7 @@ check_date("31 009 2011")
 ```
   
 
-# Question 2
+# The function that turns dates into universal formet
 The function `return_date()` receives the input of date as a line in data frame, which has 3 variables `Day`, `Month` and `Year`. The purpose is to accommodate the df input in Question 3. It will fix issues with swapped sequences between 3 date components, minor mis-spelling.  
 If the date is valid and ambitious (as checked by `check_date()` function), the date is converted to the format of `dd Mmm yyyy` and returned. For example, `12 Sep 2000`. If the date is invalid or ambitious, an `NA` is returned.   
 
@@ -377,7 +374,7 @@ return_date(data.frame(Day = "MAY", Month = "60", Year = "9"))
 ```
 
 
-# Question 3
+# Clean up the dates and save it in the output
 ```{r}
 # Import data
 Dates.df <- read.csv("Dates.csv", header = TRUE)
@@ -401,9 +398,8 @@ write.table(dates, "Dates_output.csv")
 
 
 
-### Question 4
-Using the corrected dates, use ggplot to make a barplot of the frequency of each
-month. The axes should be readable.  
+### Visualization
+Using the corrected dates, use ggplot to make a barplot of the frequency of each month. The axes should be readable.  
 ```{r}
 dates_new.df <- dates %>% 
   # Split into 3 components
